@@ -1,9 +1,9 @@
 ///////////////////////////////////////////
-// csrwrites.S
+// lsu.S
 //
-// Written: David_Harris@hmc.edu 21 March 2023
+// Written: Kevin Box and Miles Cook kbox@hmc.edu mdcook@hmc.edu 26 March 2023
 //
-// Purpose: Test writes to CSRs
+// Purpose: Test coverage for lsu
 //
 // A component of the CORE-V-WALLY configurable RISC-V project.
 // 
@@ -27,11 +27,7 @@
 #include "WALLY-init-lib.h"
 
 main:
-    li t0, -5
-    csrw stimecmp, t0   # initialize so ImperasDV agrees
-    csrrw t0, stimecmp, t0
-    csrrw t0, satp, zero
-    csrrw t0, stvec, zero
-    csrrw t0, sscratch, zero
+
+    sfence.vma x0, x0 // sfence.vma to assert TLBFlush
 
     j done
