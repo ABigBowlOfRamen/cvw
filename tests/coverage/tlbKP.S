@@ -1,10 +1,19 @@
 ///////////////////////////////////////////
+<<<<<<< HEAD
 // tlbKP.S
 //
 // Written: mmendozamanriquez@hmc.edu 13 April 2023
 //          nlimpert@hmc.edu
 //
 // Purpose: Test coverage for TLB
+=======
+// lsu_test.S
+//
+// Written: mmendozamanriquez@hmc.edu 4 April 2023
+//          nlimpert@hmc.edu
+//
+// Purpose: Test coverage for LSU
+>>>>>>> bdd5f5e61139aa5b951612e0e378ec6c4e88ce97
 //
 // A component of the CORE-V-WALLY configurable RISC-V project.
 // 
