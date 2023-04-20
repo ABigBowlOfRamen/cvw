@@ -35,7 +35,7 @@ do GetLineNum.do
 coverage exclude -srcfile lzc.sv 
 
 # FDIVSQRT has 
-coverage exclude -scope /core/fpu/fpu/fdivsqrt/fdivsqrtfsm -ftrans state DONE->BUSY
+coverage exclude -scope /dut/core/fpu/fpu/fdivsqrt/fdivsqrtfsm -ftrans state DONE->BUSY
 
 ### Exclude D$ states and logic for the I$ instance
 # This is cleaner than trying to set an I$-specific pragma in cachefsm.sv (which would exclude it for the D$ instance too)
@@ -52,7 +52,7 @@ set end [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag-end: icache case"]
 coverage exclude -scope /dut/core/ifu/bus/icache/icache/cachefsm -linerange $start-$end
 coverage exclude -scope /dut/core/ifu/bus/icache/icache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: icache WRITEBACKStatement"]
 # exclude Atomic Operation logic
-coverage exclude -scope /dut/core/ifu/bus/icache/icache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: icache storeAMO"] -item e 1 -fecexprrow 6
+coverage exclude -scope /dut/core/ifu/bus/icache/icache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: cache AnyMiss"] -item e 1 -fecexprrow 6
 coverage exclude -scope /dut/core/ifu/bus/icache/icache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: icache storeAMO1"] -item e 1 -fecexprrow 2-4
 coverage exclude -scope /dut/core/ifu/bus/icache/icache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: icache AnyUpdateHit"] -item e 1 -fecexprrow 2
 # cache write logic
@@ -77,6 +77,19 @@ for {set i 0} {$i < $numcacheways} {incr i} {
     coverage exclude -scope /dut/core/ifu/bus/icache/icache/CacheWays[$i] -linerange [GetLineNum ../src/cache/cacheway.sv "exclusion-tag: icache SetValidEN"] -item e 1 -fecexprrow 4
 }
 
+## D$ Exclusions.
+# InvalidateCache is I$ only:
+coverage exclude -scope /dut/core/lsu/bus/dcache/dcache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: dcache InvalidateCheck"] -item b 2
+coverage exclude -scope /dut/core/lsu/bus/dcache/dcache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: dcache InvalidateCheck"] -item s 1
+coverage exclude -scope /dut/core/lsu/bus/dcache/dcache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: dcache CacheEn"] -item e 1 -fecexprrow 12
+coverage exclude -scope /dut/core/lsu/bus/dcache/dcache/cachefsm -linerange [GetLineNum ../src/cache/cachefsm.sv "exclusion-tag: cache AnyMiss"] -item e 1 -fecexprrow 4
+set numcacheways 4
+for {set i 0} {$i < $numcacheways} {incr i} {
+    coverage exclude -scope /dut/core/lsu/bus/dcache/dcache/CacheWays[$i] -linerange [GetLineNum ../src/cache/cacheway.sv "exclusion-tag: dcache invalidateway"] -item be 1 -fecexprrow 4
+}
+# D$ writeback, flush, write_line, or flush_writeback states can't be cancelled by a flush
+coverage exclude -scope /dut/core/lsu/bus/dcache/dcache/cachefsm -ftrans CurrState STATE_WRITEBACK->STATE_READY STATE_FLUSH->STATE_READY STATE_WRITE_LINE->STATE_READY STATE_FLUSH_WRITEBACK->STATE_READY
+
 
 # Excluding peripherals as sources of instructions for the ifu
 coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker/adrdecs/clintdec
@@ -84,11 +97,31 @@ coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker/adrdecs/gpiodec
 coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker/adrdecs/uartdec
 coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker/adrdecs/plicdec
 
+# Excluding so far un-used instruction sources for the ifu
 coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker/adrdecs/bootromdec
 coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker/adrdecs/uncoreramdec
 
 
 #Excluding the bootrom, uncoreran, and clint as sources for the lsu
 coverage exclude -scope /dut/core/lsu/dmmu/dmmu/pmachecker/adrdecs/bootromdec
-#set line [GetLineNum ../src/mmu/adrdec.sv "& SizeValid"]
-#coverage exclude -scope /dut/core/lsu/dmmu/dmmu/pmachecker/adrdecs/clintdec -linerange $line-$line -item e 1 -fecexprrow 5
+
+
+#Excluding signals in lsu: clintdec and uncoreram accept all sizes so 'SizeValid' will never be 0
+set line [GetLineNum ../src/mmu/adrdec.sv "& SizeValid"]
+coverage exclude -scope /dut/core/lsu/dmmu/dmmu/pmachecker/adrdecs/clintdec -linerange $line-$line -item e 1 -fecexprrow 5
+set line [GetLineNum ../src/mmu/adrdec.sv "& SizeValid"]
+coverage exclude -scope /dut/core/lsu/dmmu/dmmu/pmachecker/adrdecs/uncoreramdec -linerange $line-$line -item e 1 -fecexprrow 5
+
+# Excluding signals in lsu: the lsu never executes instructions so 'ExecuteAccess' will never be 1
+set line [GetLineNum ../src/mmu/pmachecker.sv "AccessRWX ="]
+coverage exclude -scope /dut/core/lsu/dmmu/dmmu/pmachecker -linerange $line-$line -item e 1 -fecexprrow 6
+set line [GetLineNum ../src/mmu/pmachecker.sv "ReadAccessM \\| ExecuteAccessF"]
+coverage exclude -scope /dut/core/lsu/dmmu/dmmu/pmachecker -linerange $line-$line -item e 1 -fecexprrow 4
+
+# Excluding ReadAccess and WriteAccess signal in the ifu that will never be true
+set line [GetLineNum ../src/mmu/pmachecker.sv "ReadAccessM \\| WriteAccessM"]
+coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker -linerange $line-$line -item e 1 -fecexprrow 2 4
+set line [GetLineNum ../src/mmu/pmachecker.sv "WriteAccessM \\| ExecuteAccessF"]
+coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker -linerange $line-$line -item e 1 -fecexprrow 1-5
+set line [GetLineNum ../src/mmu/pmachecker.sv "ReadAccessM \\| ExecuteAccessF"]
+coverage exclude -scope /dut/core/ifu/immu/immu/pmachecker -linerange $line-$line -item e 1 -fecexprrow 1-3
